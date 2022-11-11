@@ -20,7 +20,7 @@ class RayCasting:
 
             return image
 
-            # this is obviously causing issues
+            # todo: this is obviously causing issues, we need a better fix!
 
             img = image.copy()
 
