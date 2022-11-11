@@ -23,7 +23,7 @@ class Game:
 
         # Start PYGAME, hide the mouse
         pg.init()
-        pg.mouse.set_visible(False)
+        #pg.mouse.set_visible(False)
         self.screen = pg.display.set_mode(G_RES)
 
         # Clock and global event trigger. Make sure we set the global event to False

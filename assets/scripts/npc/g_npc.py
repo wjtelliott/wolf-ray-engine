@@ -13,18 +13,21 @@ class NPC(AnimatedSprite):
         self.walk_images = self.get_images(self.path + '/walk')
 
         self.attack_dist = randint(3, 6)
+        self.sight_dist = randint(3, 10)
         self.speed = 0.03
         self.size = 10
         self.health = 100
         self.attack_damage = 10
-        self.accuracy = 0.15
+        self.accuracy = 0.75
         self.alive = True
         self.pain = False
         self.player_dist = 1000
 
         self.frame_counter = 0
+        self.damage_frame = 3
 
         self.ray_cast_value = False
+        self.ray_cast_sight_value = False
         self.player_search_trigger = False
 
     def update(self):
@@ -34,8 +37,18 @@ class NPC(AnimatedSprite):
 
     def animate_pain(self):
         self.animate(self.pain_images)
+
+        # self.animate will scroll thru the images for us, so we can reset frame counter
+        self.frame_counter = 0
         if self.animation_trigger:
             self.pain = False
+
+    def animate_idle(self):
+        # for now we just want to scroll thru the idle spin
+        self.animate(self.idle_images)
+
+        # we can set the frame counter here to 0, since animate() will scroll thru the images for us
+        self.frame_counter = 0
 
     def animate_death(self):
         if not self.alive:
@@ -50,6 +63,7 @@ class NPC(AnimatedSprite):
         if self.ray_cast_value and self.game.player.shot and (self.player.weapon.is_melee and self.player_dist < 0.4 or not self.player.weapon.is_melee):
             if HALF_WIDTH - self.sprite_half_width < self.screen_x < HALF_WIDTH + self.sprite_half_width:
                 self.game.player.shot = False
+                self.player_search_trigger = True
                 if randint(0, 50) < self.game.player.weapon.damage or self.game.player.weapon.is_melee: 
                     self.pain = True
                 self.health -= self.game.player.weapon.damage
@@ -58,13 +72,18 @@ class NPC(AnimatedSprite):
     def check_health(self):
         if self.health < 1:
             self.alive = False
-            # play sound
+            self.frame_counter = 0
+            #todo: play sound
     
     def attack(self):
         if self.animation_trigger:
             # self.game.sound.npc_show.play()
-            if random() < self.accuracy:
+            self.frame_counter += 1
+            if random() < self.accuracy and self.frame_counter == self.damage_frame:
                 self.game.player.get_damage(self.attack_damage)
+            else:
+                if self.frame_counter >= len(self.attack_images):
+                    self.frame_counter = 0
 
     def check_wall(self, x, y):
         return (x, y) not in self.game.map.world_map
@@ -91,7 +110,7 @@ class NPC(AnimatedSprite):
             self.check_hit_in_npc()
             if self.pain:
                 self.animate_pain()
-            elif self.ray_cast_value or self.player_search_trigger:
+            elif (self.ray_cast_value and self.ray_cast_sight_value) or self.player_search_trigger:
                 if self.dist < self.attack_dist and self.ray_cast_value:
                     self.animate(self.attack_images)
                     self.attack()
@@ -170,6 +189,9 @@ class NPC(AnimatedSprite):
         self.player_dist = player_dist
 
         if 0 < player_dist < wall_dist or not wall_dist:
-            self.player_search_trigger = True
+            if self.player_dist <= self.sight_dist:
+                self.ray_cast_sight_value = True
+                self.player_search_trigger = True
             return True
+        self.ray_cast_sight_value = False
         return False

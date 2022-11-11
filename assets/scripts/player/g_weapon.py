@@ -44,9 +44,10 @@ class Weapon(AnimatedSprite):
             self.game.sound.play(self.get_sound())
 
     def out_of_ammo(self):
-        self.images.rotate(self.frame_counter - self.num_images)
-        self.frame_counter = 0
-        self.image = self.images[0]
+        if self.frame_counter != 0:
+            self.images.rotate(self.frame_counter - self.num_images)
+            self.frame_counter = 0
+            self.image = self.images[0]
         self.shooting = False
         # self.mouse_down = False
         self.game.sound.play('gun/outofammo.wav')
@@ -64,9 +65,13 @@ class Weapon(AnimatedSprite):
             # self.game.player.shot = False
             if self.animation_trigger:
                 self.game.player.shot = False
+
+                # redundancy check
                 if self.game.player.ammo < 1 and not self.game.player.weapon.is_melee:
                     self.out_of_ammo()
                     return
+
+                
                 if self.frame_counter == self.damage_frame:
                     #deal damage
                     self.deal_damage()
@@ -77,6 +82,8 @@ class Weapon(AnimatedSprite):
                     # if mouse down, go back
                     if self.double_damage:
                         self.deal_damage(False)
+                        if not self.game.player.weapon.is_melee:
+                            self.game.player.ammo -= 1
                     if self.mouse_down:
                         move_frame(self, -2)
                     else:
@@ -85,8 +92,20 @@ class Weapon(AnimatedSprite):
                     move_frame(self, 1)
 
 
+    def calculate_weapon_sway(self, pos):
+        if not self.game.player.is_running or self.shooting:
+            return pos
+        weapon_x, weapon_y = pos
+        weapon_sway_magnitude_x, weapon_sway_magnitude_y = 50, 5
+        return (
+            weapon_x + math.sin(self.game.player.weapon_sway) * weapon_sway_magnitude_x,
+            weapon_y + -math.sin(self.game.player.weapon_sway /2) * weapon_sway_magnitude_y
+        )
+
     def draw(self):
-        self.game.screen.blit(self.images[0], self.weapon_pos)
+        self.game.screen.blit(
+            self.images[0], self.calculate_weapon_sway(self.weapon_pos)
+        )
 
     def update(self):
         self.check_animation_time()

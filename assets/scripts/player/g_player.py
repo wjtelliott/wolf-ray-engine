@@ -23,12 +23,20 @@ class Player:
         self.sub = None
         self.chain = None
         self.health = PLAYER_MAX_HEALTH
-        self.ammo = 500
+        self.ammo = 50
         self.rel = MOUSE_MAX_REL
         self.rel_y = MOUSE_MAX_REL
 
         self.health_recovery_delay = 700
         self.time_prev = pg.time.get_ticks()
+
+        self.weapon_sway = 0
+
+    def update_weapon_sway(self):
+        self.weapon_sway += 0.0065 * self.game.delta_time
+        if self.weapon_sway >= 65535:
+            self.weapon_sway = 0
+
 
     def recover_health(self):
         if self.check_health_recovery_delay() and self.health < PLAYER_MAX_HEALTH:
@@ -58,8 +66,11 @@ class Player:
     def single_fire_event(self, event):
         if event.type == pg.MOUSEBUTTONDOWN:
             if event.button == 1:
-                self.weapon.mouse_down = True
-                self.weapon.shooting = True
+                if self.ammo < 1 and not self.weapon.is_melee:
+                    self.weapon.out_of_ammo()
+                else:
+                    self.weapon.mouse_down = True
+                    self.weapon.shooting = True
             # if event.button == 1 and not self.shot and not self.game.weapon.shooting:
             #     self.shot = True
             #     self.game.weapon.shooting = True
@@ -142,14 +153,16 @@ class Player:
         self.angle %= math.tau
 
     def mouse_control(self):
-        mx, _ = pg.mouse.get_pos()
+        mx, my = pg.mouse.get_pos()
         if mx < MOUSE_BORDER_LEFT or mx > MOUSE_BORDER_RIGHT:
+            pg.mouse.set_pos([HALF_WIDTH, HALF_HEIGHT])
+        if my < 20 or my > 200:
             pg.mouse.set_pos([HALF_WIDTH, HALF_HEIGHT])
         self.rel, rel_y = pg.mouse.get_rel()
         self.rel = max(-MOUSE_MAX_REL, min(MOUSE_MAX_REL, self.rel))
 
         #self.rel_y = pg.mouse.get_rel()[1]
-        self.rel_y += rel_y * MOUSE_SENSITIVITY * 1000 * self.game.delta_time * -1
+        self.rel_y += rel_y * MOUSE_SENSITIVITY * 500 * self.game.delta_time * -1
         self.rel_y = max(-MOUSE_MAX_REL_Y, min(MOUSE_MAX_REL_Y, self.rel_y))
         self.angle += self.rel * MOUSE_SENSITIVITY * self.game.delta_time
 
@@ -167,6 +180,7 @@ class Player:
         if self.weapon is not None:
             self.weapon.update()
         self.recover_health()
+        self.update_weapon_sway()
 
     def check_wall(self, x, y):
         return (x, y) not in self.game.map.world_map

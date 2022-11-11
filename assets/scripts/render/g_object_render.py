@@ -11,6 +11,7 @@ class ObjectRenderer:
         self.blood_screen = self.get_texture('assets/resources/textures/pain.png', G_RES)
         self.game_over_screen = self.get_texture('assets/resources/textures/game_over.png', G_RES)
         self.digit_size = 90
+        self.digit_size_offset = self.digit_size // 4
         self.digit_images = [self.get_texture(f'assets/resources/textures/font/{i}.png', [self.digit_size] * 2)
                             for i in range(11)]
         self.digits = dict(zip(map(str, range(11)), self.digit_images))
@@ -22,10 +23,11 @@ class ObjectRenderer:
         self.draw_player_ammo()
 
     def draw_player_health(self):
+
         health = str(self.game.player.health)
         for i, char in enumerate(health):
-            self.screen.blit(self.digits[char], (i * self.digit_size + (self.digit_size // 4), self.digit_size // 4))
-        self.screen.blit(self.digits['10'], ((i + 1) * self.digit_size + (self.digit_size // 4), self.digit_size // 4))
+            self.screen.blit(self.digits[char], (i * self.digit_size + self.digit_size_offset, HEIGHT - self.digit_size - self.digit_size_offset))
+        self.screen.blit(self.digits['10'], ((i + 1) * self.digit_size + self.digit_size_offset, HEIGHT - self.digit_size - self.digit_size_offset))
 
     def game_over(self):
         self.screen.blit(self.game_over_screen, (0, 0))
@@ -33,7 +35,7 @@ class ObjectRenderer:
     def draw_player_ammo(self):
         ammo = str(self.game.player.ammo)
         for i, char in enumerate(ammo):
-            self.screen.blit(self.digits[char], ((WIDTH + i * self.digit_size - (self.digit_size // 4)) - (self.digit_size * len(ammo)), self.digit_size // 4))
+            self.screen.blit(self.digits[char], ((WIDTH + i * self.digit_size - self.digit_size_offset) - (self.digit_size * len(ammo)), HEIGHT - self.digit_size - self.digit_size_offset))
 
     def player_damage(self):
         if self.game.player.health > 0:

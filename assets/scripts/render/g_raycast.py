@@ -17,8 +17,16 @@ class RayCasting:
 
 
         def colorize_wall(image, dist):
+
+            return image
+
+            # this is obviously causing issues
+
             img = image.copy()
-            img.fill((dist, dist, dist, 0), None, pg.BLEND_RGBA_SUB)
+
+            # color (blend sub) our image, we must keep this value between 0-255
+            color_amount = max(0, min(255, dist))
+            img.fill((color_amount, color_amount, color_amount), None, pg.BLEND_RGB_SUB)
             return img
 
         for ray, values in enumerate(self.ray_casting_result):
@@ -39,14 +47,17 @@ class RayCasting:
                 wall_column = pg.transform.scale(wall_column, (SCALE, HEIGHT))
                 wall_pos = (ray * SCALE, hb_result)
 
-            # default
-            player_shot_light = 10
-            # if the player is shooting, and it is not a melee weapon, sub .5
-            if self.game.player.shot:
-                if not self.game.player.weapon.is_melee:
-                    player_shot_light = 9.5
+            # light the environment close to the player if the player is shooting
+            ambient_darkness = 15
+            player_shot_light_dist = 4
 
-            wall_column = colorize_wall(wall_column, depth * player_shot_light)
+            if depth < player_shot_light_dist:
+                # if the player is shooting, and it is not a melee weapon, reduce darkness effect
+                if self.game.player.shot:
+                    if not self.game.player.weapon.is_melee:
+                        ambient_darkness = 9.5
+                
+            wall_column = colorize_wall(wall_column, depth * ambient_darkness)
 
             self.objects_to_render.append((depth, wall_column, wall_pos))
     
@@ -108,16 +119,20 @@ class RayCasting:
                 x_hor %= 1
                 offset = (1 - x_hor) if sin_a > 0 else x_hor
 
-            #fishy
+            # comment this out to get a camera fish-eye effect
             depth *= math.cos(self.game.player.angle - ray_angle)
 
             
+            # to avoid a /0 error, add a small magic number to our calc
             proj_height = SCREEN_DIST / (depth + 0.0001)
+
+
+            # if we intend to add elevators or stairs, we can use this proj_look_height to address the player's Z coord later
             proj_look_height = 0
 
             self.headbob_result = math.sin(self.headbob) * self.headbob_multitude * +self.game.player.is_running
 
-            self.ray_casting_result.append((depth, proj_height, texture, offset, self.headbob_result))
+            self.ray_casting_result.append((depth, proj_height, texture, offset, self.headbob_result + proj_look_height))
 
             # color = [255 / (1 + depth ** 5 * 0.00002)] * 3
             # pg.draw.rect(self.game.screen, color, 
@@ -125,10 +140,15 @@ class RayCasting:
             
             ray_angle += DELTA_ANGLE
 
-    def update(self):
-
+    #? This could probably be moved to the player file, and accessed from here
+    def update_player_headbob(self):
         self.headbob += 0.01 * self.game.delta_time
+
+        # in case the game is played a long time, we want to make sure that
+        # we don't have overflow errors. after a long time we can just reset this
         if self.headbob >= 65535: self.headbob = 0
 
+    def update(self):
+        self.update_player_headbob()
         self.ray_cast()
         self.get_objects_to_draw()
